@@ -102,7 +102,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
         let harderMessage = await page.$("text/Great work! Let's make this a bit harder...");
 
         // Start The Challenge
-        if (nextButtonText.includes("start challenge")) {
+        if (nextButtonText.includes("start challenge") || nextButtonText.includes("start lesson")) {
             await nextButton.click();
             isNextButtonDisabled = true;
             await sleep(1000);
