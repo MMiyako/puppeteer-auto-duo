@@ -77,12 +77,22 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
     ];
 
     let challenges = session.challenges;
+    let harder = session.adaptiveChallenges;
+    let hardpoint = false;
 
     console.log("Questions:\n");
 
     challenges.forEach((challenge, index) => {
         console.log(`${index.toString().padStart(2, "0")} - ${challenge.type}`);
     });
+
+    if (harder) {
+        console.log("----------------------------------------");
+
+        harder.forEach((challenge, index) => {
+            console.log(`${index.toString().padStart(2, "0")} - ${challenge.type}`);
+        });
+    }
 
     for (let i = 0; i < challenges.length; i++) {
         console.log(`----------------------------------------`);
@@ -289,6 +299,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
         // Hard Challenge Flash Page
         if (harderMessage) {
             console.log(`${i} - ${challenges[i].type} (Skip)`);
+            hardpoint = true;
             await nextButton.click();
             await sleep(500);
             break;
@@ -301,9 +312,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
     }
 
     // Harder Challenges
-    let harder = session.adaptiveChallenges;
-
-    if (!harder) {
+    if (!harder || !hardpoint) {
         return;
     }
 
