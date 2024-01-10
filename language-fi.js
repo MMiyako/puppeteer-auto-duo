@@ -77,6 +77,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
         "listenMatch",
         "listen",
         "name",
+        "form",
     ];
 
     let challenges = session.challenges;
@@ -141,7 +142,8 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
             challenges[i].type == "selectPronunciation" ||
             challenges[i].type == "select" ||
             challenges[i].type == "selectTranscription" ||
-            challenges[i].type == "gapFill"
+            challenges[i].type == "gapFill" ||
+            challenges[i].type == "form"
         ) {
             if (isNextButtonDisabled) {
                 let el = await page.$$(`[data-test="challenge-choice"]`);
