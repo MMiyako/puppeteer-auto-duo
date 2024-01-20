@@ -31,7 +31,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
     await sleep(1500);
 
     // Params
-    // normal, manual, delay, practice
+    // normal, manual, delay, practice, mistake
 
     let params = process.argv.slice(2);
     let delay = 0;
@@ -48,6 +48,10 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
     if (params.length > 0 && params[0] == "practice") {
         modeUrl = "https://www.duolingo.com/practice";
+    }
+
+    if (params.length > 0 && params[0] == "mistake") {
+        modeUrl = "https://www.duolingo.com/mistakes-review";
     }
 
     let session;
@@ -111,9 +115,10 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
         let nextButtonText = await page.evaluate((el) => el.textContent.toLowerCase(), nextButton);
 
         let harderMessage = await page.$("text/Great work! Let's make this a bit harder...");
+        let mistakeMode = await page.$("text/Let’s get started! You’ll review");
 
         // Start The Challenge
-        if (nextButtonText.includes("start challenge") || nextButtonText.includes("start lesson")) {
+        if (nextButtonText.includes("start challenge") || nextButtonText.includes("start lesson") || mistakeMode) {
             await nextButton.click();
             isNextButtonDisabled = true;
             await sleep(1000);
