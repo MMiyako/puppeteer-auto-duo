@@ -31,7 +31,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
     await sleep(1500);
 
     // Params
-    // normal, manual, delay, practice
+    // normal, manual, delay, practice, mistake
 
     let params = process.argv.slice(2);
     let delay = 0;
