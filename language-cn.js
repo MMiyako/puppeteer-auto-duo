@@ -31,7 +31,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
     await sleep(1500);
 
     // Params
-    // normal, manual, delay, practice, mistake
+    // normal, manual, delay, practice, mistake, legendary
 
     let params = process.argv.slice(2);
     let delay = 0;
@@ -52,6 +52,14 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
     if (params.length > 0 && params[0] == "mistake") {
         modeUrl = "https://www.duolingo.com/mistakes-review";
+    }
+
+    if (params.length > 0 && params[0] == "legendary") {
+        if (!params[1] || !params[2]) {
+            throw new Error("Missing parameter(s)");
+        }
+
+        modeUrl = `https://www.duolingo.com/lesson/unit/${params[1]}/legendary/${params[2]}`;
     }
 
     let session;
@@ -112,9 +120,17 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
         let harderMessage = await page.$("text/Great work! Let's make this a bit harder...");
         let mistakeMode = await page.$("text/Let’s get started! You’ll review");
+        let legendaryMode = await page.$("text/to reach Legendary");
+        let legendaryMessage = await page.$("text/for your hard work so far");
 
         // Start The Challenge
-        if (nextButtonText.includes("start challenge") || nextButtonText.includes("start lesson") || mistakeMode) {
+        if (
+            nextButtonText.includes("start challenge") ||
+            nextButtonText.includes("start lesson") ||
+            mistakeMode ||
+            legendaryMode ||
+            legendaryMessage
+        ) {
             await nextButton.click();
             isNextButtonDisabled = true;
             await sleep(1000);
