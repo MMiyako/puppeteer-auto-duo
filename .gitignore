@@ -1,3 +1,5 @@
 node_modules
 user_data
 .env
+playground.js
+data.json
