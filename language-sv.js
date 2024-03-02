@@ -126,6 +126,7 @@ const fsp = fs.promises;
         let mistakeMode = await page.$("text/Let’s get started! You’ll review");
         let legendaryMode = await page.$("text/to reach Legendary");
         let legendaryMessage = await page.$("text/for your hard work so far");
+        let speakMessage = await page.$("text/Can't speak now");
 
         // Start The Challenge
         if (
@@ -140,6 +141,15 @@ const fsp = fs.promises;
             await sleep(500);
             // Fix (Node is detached from document)
             nextButton = await page.waitForSelector('[data-test="player-next"]');
+            await nextButton.click();
+            await sleep(500);
+        }
+
+        // SKip Speak Challenges
+        if (speakMessage) {
+            await speakMessage.click();
+            await sleep(500);
+            let nextButton = await page.waitForSelector('[data-test="player-next"]');
             await nextButton.click();
             await sleep(500);
         }
