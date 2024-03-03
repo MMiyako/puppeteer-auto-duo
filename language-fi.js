@@ -1,6 +1,10 @@
 import puppeteer from "puppeteer-extra";
 import Adblocker from "puppeteer-extra-plugin-adblocker";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import chalk from "chalk";
+import fs from "fs";
+
+const fsp = fs.promises;
 
 (async () => {
     puppeteer.use(StealthPlugin());
@@ -9,41 +13,23 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
     const browser = await puppeteer.launch({
         headless: false,
         userDataDir: "user_data",
-        args: [
-            "--mute-audio",
-            // "--start-maximized"
-        ],
+        args: ["--mute-audio", "--window-size=1000,1000", "--window-position=-5,0"],
+        defaultViewport: null,
         // devtools: true,
         // slowMo: 100,
     });
 
     const page = await browser.newPage();
 
-    await page.setViewport({
-        width: 1280,
-        height: 720,
-        deviceScaleFactor: 1,
-    });
-
-    page.setDefaultNavigationTimeout(0);
-
-    await page.goto("https://www.duolingo.com/learn");
-    await sleep(1500);
-
     // Params
-    // normal, manual, delay, practice, mistake, legendary
+    // normal, manual, practice, mistake, legendary
 
     let params = process.argv.slice(2);
-    let delay = 0;
     let modeUrl = "https://www.duolingo.com/lesson";
 
     if (params.length > 0 && params[0] == "manual") {
         await page.goto("https://www.duolingo.com/");
         return;
-    }
-
-    if (params.length > 0 && params[0] == "delay") {
-        delay = params[1];
     }
 
     if (params.length > 0 && params[0] == "practice") {
@@ -62,16 +48,20 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
         modeUrl = `https://www.duolingo.com/lesson/unit/${params[1]}/legendary/${params[2]}`;
     }
 
-    let session;
-
     await page.goto(modeUrl);
 
-    // Check & Set the correct settings
-    await checkSettings(page, modeUrl);
+    let localStorage = await getLocalStorage(page);
+
+    await sleep(1000);
+
+    await checkSettings(page, modeUrl, localStorage);
+
+    let session;
 
     while (!session) {
+        await sleep(1000);
         page.reload();
-        await sleep(500);
+        await sleep(1000);
         session = await getChallengesSession(page, modeUrl);
     }
 
@@ -96,8 +86,6 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
     let harder = session.adaptiveChallenges;
     let hardpoint = false;
 
-    console.log("Questions:\n");
-
     challenges.forEach((challenge, index) => {
         console.log(`${index.toString().padStart(2, "0")} - ${challenge.type}`);
     });
@@ -116,8 +104,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
         let nextButton = await page.waitForSelector('[data-test="player-next"]');
 
-        await sleep(1500);
-        await sleep(delay);
+        await sleep(500);
 
         let isNextButtonDisabled = await page.evaluate((el) => el.getAttribute("aria-disabled") === "true", nextButton);
         let nextButtonText = await page.evaluate((el) => el.textContent.toLowerCase(), nextButton);
@@ -137,11 +124,11 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
         ) {
             await nextButton.click();
             isNextButtonDisabled = true;
-            await sleep(1000);
+            await sleep(500);
             // Fix (Node is detached from document)
             nextButton = await page.waitForSelector('[data-test="player-next"]');
             await nextButton.click();
-            await sleep(1000);
+            await sleep(500);
         }
 
         // * Have to select the toggle button only after the challenge started
@@ -172,9 +159,9 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
                 await el[challenges[i].correctIndex].click();
                 await sleep(200);
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
             }
         }
 
@@ -221,25 +208,24 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
             if (toggleKeyboard) {
                 // Textarea can be toggle
                 if (toggleKeyboard == "USE KEYBOARD") {
-                    console.log("### TOGGLE KEYBOARD ###");
                     await page.click("[data-test='player-toggle-keyboard']");
                     await page.waitForSelector("[data-test='challenge-translate-input']");
                 }
 
                 await page.type("[data-test='challenge-translate-input']", challenges[i].correctSolutions[0], {
-                    delay: 10,
+                    delay: 2,
                 });
 
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
             } else {
                 let el = await page.$(`[data-test='challenge-translate-input']`);
                 if (el) {
                     // Only textarea
                     await page.type("[data-test='challenge-translate-input']", challenges[i].correctSolutions[0], {
-                        delay: 10,
+                        delay: 2,
                     });
                 } else {
                     // Only word bank
@@ -279,19 +265,18 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
             if (toggleKeyboard) {
                 // --- Type Event ---
                 if (toggleKeyboard == "USE KEYBOARD") {
-                    console.log("### TOGGLE KEYBOARD ###");
                     await page.click("[data-test='player-toggle-keyboard']");
                     await page.waitForSelector("[data-test='challenge-translate-input']");
                 }
 
                 await page.type("[data-test='challenge-translate-input']", challenges[i].prompt, {
-                    delay: 10,
+                    delay: 2,
                 });
 
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
             } else {
                 // --- Click Event ---
                 for (let j = 0; j < challenges[i].correctTokens.length; j++) {
@@ -328,7 +313,6 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
             if (toggleKeyboard) {
                 // --- Type Event ---
                 if (toggleKeyboard == "MAKE HARDER") {
-                    console.log("### TOGGLE KEYBOARD ###");
                     await page.click("[data-test='player-toggle-keyboard']");
                     await page.waitForSelector("[data-test='challenge-translate-input']");
                 }
@@ -337,14 +321,14 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
                     "[data-test='challenge-translate-input']",
                     challenges[i].challengeResponseTrackingProperties.best_solution,
                     {
-                        delay: 10,
+                        delay: 2,
                     }
                 );
 
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
                 await nextButton.click();
-                await sleep(500);
+                await sleep(200);
             }
         }
 
@@ -358,13 +342,13 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
             let parsedAnswer = answer.join("");
 
             await page.type("[data-test='challenge-text-input']", parsedAnswer, {
-                delay: 10,
+                delay: 2,
             });
 
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
         }
 
         // listenMatch
@@ -399,25 +383,25 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
         // listen
         if (challenges[i].type == "listen" && isNextButtonDisabled) {
             await page.type("[data-test='challenge-translate-input']", challenges[i].prompt, {
-                delay: 10,
+                delay: 2,
             });
 
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
         }
 
         // name
         if (challenges[i].type == "name" && isNextButtonDisabled) {
             await page.type("[data-test='challenge-text-input']", challenges[i].correctSolutions[0], {
-                delay: 10,
+                delay: 2,
             });
 
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
         }
 
         // Hard Challenge Flash Page
@@ -429,17 +413,19 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
             break;
         }
 
-        console.log(`${i} - ${challenges[i].type} \u2714`);
+        console.log(`${i} - ${challenges[i].type} ✔️`);
 
-        await sleep(1000);
-        await sleep(delay);
+        await sleep(500);
+    }
+
+    if (!harder || !hardpoint) {
+        await finishing(page, localStorage);
+
+        await browser.close();
+        process.exit();
     }
 
     // Harder Challenges
-    if (!harder || !hardpoint) {
-        return;
-    }
-
     console.log(`----------------------------------------`);
     console.log(`Hard Challenges`);
 
@@ -449,8 +435,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
         let nextButton = await page.waitForSelector('[data-test="player-next"]');
 
-        await sleep(1500);
-        await sleep(delay);
+        await sleep(500);
 
         let isNextButtonDisabled = await page.evaluate((el) => el.getAttribute("aria-disabled") === "true", nextButton);
 
@@ -461,73 +446,68 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
         if (harder[i].type == "translate" && isNextButtonDisabled) {
             if (toggleKeyboard == "USE KEYBOARD") {
-                console.log("### TOGGLE KEYBOARD ###");
                 await page.click("[data-test='player-toggle-keyboard']");
                 await page.waitForSelector("[data-test='challenge-translate-input']");
             }
 
             await page.type("[data-test='challenge-translate-input']", harder[i].correctSolutions[0], {
-                delay: 10,
+                delay: 2,
             });
 
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
             await nextButton.click();
-            await sleep(500);
+            await sleep(200);
         }
 
-        console.log(`${i} - ${harder[i].type} \u2714`);
+        console.log(`${i} - ${harder[i].type} ✔️`);
 
-        await sleep(1000);
-        await sleep(delay);
+        await sleep(500);
     }
+
+    await finishing(page, localStorage);
+
+    await browser.close();
+    process.exit();
 })();
 
 function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms / 2));
 }
 
-async function checkSettings(page, url) {
-    // Get the localStorage value
+async function getLocalStorage(page) {
     const localStorage = await page.evaluate(() => {
         return JSON.parse(window.localStorage.getItem("duo.state"));
     });
 
-    // Check Current Language
+    return localStorage;
+}
+
+async function checkSettings(page, url, localStorage) {
     let currentCourse = localStorage.state.redux.user.currentCourseId;
 
     if (currentCourse != "DUOLINGO_FI_EN") {
         throw new Error("Wrong course: " + currentCourse);
     }
 
-    // Disable animations and motivations
-    let disableAnimations = localStorage.state.redux.browserSettings.prefersReducedMotion;
     let motivationMsg = localStorage.state.redux.browserSettings.coachEnabled;
 
-    if (!disableAnimations || motivationMsg) {
+    if (motivationMsg) {
         console.log("----------------------------------------");
         console.log("Changing settings...");
 
         await page.goto("https://www.duolingo.com/settings/account");
 
-        const animation = await page.waitForSelector("#prefersReducedMotion");
-        const motivation = await page.waitForSelector("#coachEnabled");
-
-        if (!disableAnimations) {
-            await animation.evaluate((a) => a.click());
-        }
-
-        if (motivationMsg) {
-            await motivation.evaluate((a) => a.click());
-        }
+        await page.waitForSelector("#coachEnabled");
+        await page.click("#coachEnabled + div");
 
         await page.click('[data-test="save-button"]');
-        await sleep(2000);
+        await sleep(5000);
         await page.goto(url);
     }
 
     console.log("----------------------------------------");
-    console.log("Settings \u2714");
+    console.log("Settings ✔️");
     console.log("----------------------------------------");
 }
 
@@ -536,7 +516,7 @@ async function getChallengesSession(page, url) {
     console.log("----------------------------------------");
 
     // Navigate to the website
-    await page.goto(url);
+    await page.goto(url, { waitUntil: "domcontentloaded" });
 
     // Wait for the XHR response to be loaded
     const response = await page.waitForResponse((response) => {
@@ -546,4 +526,40 @@ async function getChallengesSession(page, url) {
 
     // Extract the response data
     return await response.json();
+}
+
+async function readFile(file) {
+    let fileData = await fsp.readFile(file, "utf8");
+    let jsonData = JSON.parse(fileData);
+
+    return jsonData;
+}
+
+async function writeFile(file, data) {
+    await fsp.writeFile(file, JSON.stringify(data, null, 4));
+}
+
+async function finishing(page, localStorage) {
+    console.log(`----------------------------------------`);
+    console.log("Finishing...");
+
+    let finished = await page.$("text/Review lesson");
+
+    while (!finished) {
+        await sleep(1000);
+        finished = await page.$("text/Review lesson");
+    }
+
+    console.log(`----------------------------------------`);
+
+    await sleep(1000);
+
+    let data = await readFile("data.json");
+
+    data.perfect_lessons += 1;
+    await writeFile("data.json", data);
+    console.log(`----------------------------------------`);
+    console.log(chalk.hex("#52bdff")(`Perfect Lessons: ${data.perfect_lessons}`));
+    console.log(`----------------------------------------`);
+    process.stdout.write("\x07");
 }
